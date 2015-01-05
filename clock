@@ -1,0 +1,350 @@
+#include<reg51.h>
+#include<intrins.h>
+#define uchar unsigned char
+#define uint unsigned int
+uchar num;		 
+sbit rw=P2^1;
+sbit lcdrs=P2^2;
+sbit lcden=P2^0;
+sbit sda=P1^0;
+sbit bian=P1^7;
+uint year;
+uchar s,hour,min,sec,week,mon,day,hour2,min2,sec2;
+sbit scl=P1^1;
+uchar code table[]={'0','1','2','3','4','5','6','7','8','9',':','-',' ','*'};
+//table1显示的是星期   
+//table1[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+uchar code table1[]={'S','u','n','M','o','n','T','u','e','W','e','d','T','h','u','F','r','i','S','a','t'};
+uchar code table2[]={"NUM03"};
+uchar code table3[]={0x05,0x0A,0x1B,0x0A,0x0B,0x09,0x09,0x0B};
+uchar code table4[]={0x18,0x08,0x18,0x08,0x18,0x10,0x14,0x1C};//倪
+uchar code table5[]={0x05,0x03,0x01,0x06,0x15,0x0E,0x04,0x1B};
+uchar code table6[]={0x08,0x10,0x10,0x0C,0x15,0x0E,0x04,0x1B};//焱
+void delayus();	        //延时微秒
+void write_add(uchar address,uchar date);
+/******************************************
+	         延时模块
+******************************************/
+delay(uint t)		
+{
+	uint i,j;
+	for(i=0;i<t;i++)
+	{
+		for(j=0;j<120;j++)
+		{;}
+	}
+	return i;
+}
+	/******************************************
+	        将指令写入液晶显示器模块
+	******************************************/
+void write_com(uchar com)	
+{
+	rw=0;				//读写选择控制端口  rw=0进行写入操作
+	lcdrs=0;		  	//数据/命令选择
+	P0=com;
+	delay(5);
+	lcden=1;			  //使能控制端口
+	delay(5);
+	lcden=0;	
+}
+	/******************************************
+             将写入的指令在液晶显示器显示模块
+	******************************************/
+void write_data(uchar date)	
+{
+	lcdrs=1;			 //rs=1进行读入操作
+	P0=date;
+	delay(5);
+	lcden=1;
+	delay(5);
+	lcden=0;
+}
+	/******************************************
+            	程序的初始化模块
+	******************************************/
+void init()					
+{
+	rw=0;
+	lcden=0;
+	write_com(0x38);
+	write_com(0x0c);
+	write_com(0x06);
+	write_com(0x01);
+	write_com(0x80+0x10);
+    sda=1;
+	delayus();
+	scl=1;
+	delayus();
+	write_add(0x00,0x00);
+	write_add(0x01,0x00);
+	write_add(0x02,0x45);		  //秒
+	write_add(0x03,0x59);		//分
+	write_add(0x04,0x08);		//时
+	write_add(0x05,0x29);		  //日
+	write_add(0x06,0x03);		   //星期
+	write_add(0x07,0x12);		   //月
+	write_add(0x08,0x14); 		   //年
+}
+	/******************************************
+            延时微秒模块
+	******************************************/ 
+void delayus()	
+{
+	;
+}
+/******************************************
+         程序的开始停止应答信号模块
+******************************************/
+void start()  //开始信号
+{	
+	sda=1;
+	delayus();
+	scl=1;
+	delayus();
+	sda=0;
+	delayus();
+}
+void stop()   //停止
+{
+	sda=0;
+	delayus();
+	scl=1;
+	delayus();
+	sda=1;
+	delayus();
+}
+void respons()  //应答
+{
+	uchar i;
+	scl=1;
+	delayus();
+	while((sda==1)&&(i<250))i++;
+	scl=0;
+	delayus();
+}
+/******************************************
+           写一个字节子函数 	
+******************************************/
+void write_byte(uchar date)		
+{
+	uchar i,temp;
+	temp=date;
+	for(i=0;i<8;i++)
+	{
+		temp=temp<<1;
+		scl=0;
+	    delayus();
+		sda=CY;
+		delayus();
+		scl=1;
+		delayus();
+	}
+	scl=0;
+	delayus();
+	sda=1;
+	delayus();
+}
+/******************************************
+        	读一个字节函数子程序
+******************************************/
+uchar read_byte()		
+{
+	uchar i,k;
+	scl=0;
+	delayus();
+	sda=1;
+	delayus();
+	for(i=0;i<8;i++)
+	{
+		scl=1;
+		delayus();	
+		k=(k<<1)|sda;
+		scl=0;
+		delayus();	
+	}
+	return k;
+}
+/******************************************
+          往一个单元里写内容函数
+******************************************/
+void write_add(uchar address,uchar date)			
+{
+	start();
+	write_byte(0xa2);
+	respons();
+	write_byte(address);
+	respons();
+	write_byte(date);
+	respons();
+	stop();
+}
+/******************************************
+            读一个单元的内容	
+******************************************/
+uchar read_add(uchar address)						
+{
+	uchar date;
+	start();
+	write_byte(0xa2);
+	respons();
+	write_byte(address);
+	respons();
+	start();
+	write_byte(0xa3);
+	respons();
+	date=read_byte();
+	stop();
+	return date;
+}
+/******************************************
+          将读出的数写入hour与min中
+******************************************/
+void read8563()				
+{
+	sec=read_add(0x02);
+	min=read_add(0x03);
+	hour=read_add(0x04);
+	day=read_add(0x05);
+	week=read_add(0x06);
+	mon=read_add(0x07);
+	year=read_add(0x08);
+}
+ /******************************************
+	       液晶显示器的显示欢迎界面模块
+******************************************/
+void display1()
+{	uchar i;
+	write_com(0x40);
+	for(i=0;i<8;i++)
+	{	
+		write_data(table3[i]);	
+	}
+	write_com(0x40+0x08);
+	for(i=0;i<8;i++)
+	{	
+		write_data(table4[i]);
+	}
+	write_com(0x40+0x08+0x08);
+	for(i=0;i<8;i++)
+	{	
+		write_data(table5[i]);
+	}
+	write_com(0x40+0x08+0x08+0x080);
+	for(i=0;i<8;i++)
+	{	
+		write_data(table6[i]);
+	}
+	write_com(0x80+0x06);
+	write_data(0x00);
+	write_data(0x01);
+	write_data(0x02);
+	write_data(0x03);
+	write_com(0x80+0x40);
+	write_data(0x2a);
+	write_data('*');
+	write_data('*');
+	write_data('2');
+	write_data('0');
+	write_data('8');
+	write_data('1');
+	write_data('2');
+	write_data('0');
+	write_data('6');
+	write_data('0');
+	write_data('3');
+	write_data('*');
+	write_data('*');
+	write_data('*');
+	write_data('*');
+}
+	/******************************************
+	         液晶显示器的显示模块
+	******************************************/
+void display2()
+{	
+
+	write_com(0x80+0x00);
+	write_data('D');
+	write_data(table[10]);		//显示"："
+	write_com(0x80+0x02);
+	write_data(table[2]);		  //显示器上显示年份的2
+	write_data(table[0]);         //显示器上显示年份的0
+	write_com(0x80+0x04);
+	write_data(table[year/16]);
+	write_data(table[year%16]);
+	write_data(table[11]);		  //显示"-"
+	write_data(table[(mon&0x1f)/16]);
+	write_data(table[(mon&0x1f)%16]);
+	write_data(table[11]);			//显示"-"
+	write_data(table[(day&0x3f)/16]);
+	write_data(table[(day&0x3f)%16]);
+	write_com(0x80+0x0d);
+	for(num=0;num<3;num++)
+	{
+		write_data(table1[(week&0x07)*3+num]);	
+	}
+	write_com(0x80+0x40);
+	write_data(table[(hour&0x3f)/16]);
+	write_data(table[(hour&0x3f)%16]);
+	write_data(table[10]);			   //显示":"
+	write_data(table[(min&0x7f)/16]);
+	write_data(table[(min&0x7f)%16]);
+	write_data(table[10]);
+	write_data(table[(sec&0x7f)/16]);
+	write_data(table[(sec&0x7f)%16]);
+	write_com(0x80+0x49);
+	write_data(table2[0]);
+	write_data(table2[1]);
+	write_data(table2[2]);
+	write_data(table[10]);
+	write_data(table2[3]);
+	write_data(table2[4]);			 //显示我的学号"NUM：03"
+}
+  /******************************************
+	        清屏模块
+   ******************************************/
+  void LCMclear(void)
+  {
+  	 delay(100);
+	 lcden=0;
+	 lcdrs=0;
+	 rw=0;
+	 P0=0x01;
+	 lcden=1;
+	 _nop_();
+	 _nop_();
+	 lcden=0;
+	 delay(100);
+  }
+  /******************************************
+	         整点报时模块
+	******************************************/
+ void baoshi()		 
+ {
+ if(min==0&&sec<6)
+ {
+ bian=0;
+ delay(100);
+ bian=1;
+ }
+ }
+
+  /******************************************
+	                  主函数
+	******************************************/	
+void main()    
+{
+ 	init();	 
+	display1();
+	delay(1000);
+ 	delay(1000);
+	delay(1000);
+	LCMclear();
+	while(1)
+ 	{
+	display2();
+ 	read8563();
+	baoshi();
+   }
+}	                  
