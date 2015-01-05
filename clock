@@ -318,6 +318,31 @@ void display2()
 	 delay(100);
   }
   /******************************************
+	         定时打铃模块
+	******************************************/
+void ring()		 
+{
+   	
+    flag1=0; //是，则标志位，flag1清零
+    while(!(flag1==15))  //判断flag1是否到15
+   {
+      bian=0;  //没有，则，继续驱动蜂鸣器响，时间约为：5s
+      display2(); //调用显示子函数
+	  flag1++;   
+   }
+   bian=1;//关闭蜂鸣器 
+}
+	/******************************************
+	             闹铃模块
+	******************************************/
+void clock() 
+{
+     if(sec2==sec) //显判断秒的数值是否相等
+          if(min2==min)  //是，在判断分是否相等
+               if(hour2==hour) //是，再判断时是否相等
+               	   ring();
+}
+	/******************************************
 	         整点报时模块
 	******************************************/
  void baoshi()		 
@@ -329,6 +354,30 @@ void display2()
  bian=1;
  }
  }
+	/******************************************
+	         上下课时间打铃模块
+	******************************************/
+void clock2()  //
+{
+  if((sec==0x00)&&(min==0x15)&&(hour==0x07))	           ring();
+  else if((sec==0x00)&&(min==0x00)&&(hour==0x08))	       ring();
+  else if((sec==0x00)&&(min==0x45)&&(hour==0x08))		   ring();
+  else if((sec==0x00)&&(min==0x55)&&(hour==0x08))		   ring();
+  else if((sec==0x00)&&(min==0x40)&&(hour==0x09))		   ring();
+  else if((sec==0x00)&&(min==0x01)&&(hour==0x10))    	   ring();
+  else if((sec==0x00)&&(min==0x55)&&(hour==0x10))    	   ring();
+  else if((sec==0x00)&&(min==0x05)&&(hour==0x11))    	   ring();
+  else if((sec==0x00)&&(min==0x50)&&(hour==0x11))          ring();
+  else if((sec==0x00)&&(min==0x40)&&(hour==0x13))    		ring();
+  else if((sec==0x00)&&(min==0x25)&&(hour==0x14))    		ring();
+  else if((sec==0x00)&&(min==0x35)&&(hour==0x14))    		ring();
+  else if((sec==0x00)&&(min==0x20)&&(hour==0x15))    		ring();
+  else if((sec==0x00)&&(min==0x40)&&(hour==0x15))    		ring();
+  else if((sec==0x00)&&(min==0x25)&&(hour==0x16))    		ring();	
+  else if((sec==0x00)&&(min==0x35)&&(hour==0x16))    		ring();
+  else if((sec==0x00)&&(min==0x20)&&(hour==0x17))    		ring();  	 					 					 	 
+				 					 					 	 	 	 	 
+} 
 
   /******************************************
 	                  主函数
@@ -345,6 +394,9 @@ void main()
  	{
 	display2();
  	read8563();
+	clock(); //闹钟子函数
+        clock2();//打铃子函数
 	baoshi();
+
    }
 }	                  
